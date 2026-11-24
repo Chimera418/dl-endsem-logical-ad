@@ -2,15 +2,13 @@
 #
 # Modes supported:
 #   1. --mode verify_a2 : Evaluates the exact untouched Assignment 2 Combined PUAD
-#      checkpoint (batch_size=1, 70k iters, FP32) under the Endsem evaluation &
-#      profiling pipeline to verify exact 87.56% Mean / 83.30% Pooled parity AND
-#      measure missing metrics (params, GFLOPs, latency, peak VRAM).
-#   2. --mode train     : Trains Original PUAD from scratch under the unified Endsem
-#      protocol (batch_size=8, 50 epochs, BF16) to establish an apples-to-apples
-#      control for E02..E19 and quantify any batch-size / precision delta.
+#      checkpoint (batch_size=1, 70k iters, FP32 -> 87.56% Mean / 83.30% Pooled).
+#   2. --mode train     : Trains Original PUAD from scratch under the exact unified
+#      200-epoch protocol (batch_size=8, AdamW lr=3e-4->1e-5 cosine, patience=20)
+#      identical to E02..E05 for a strictly controlled apples-to-apples comparison.
 
-exp_id: "E01_PUAD"
-description: "Original PUAD reference (frozen PDN-S teacher + PDN-S student + AutoEncoder + Ledoit-Wolf Mahalanobis)"
+exp_id: "E01_PUAD_200ep"
+description: "Original PUAD reference (frozen PDN-S teacher + PDN-S student + AutoEncoder + Ledoit-Wolf Mahalanobis) under unified 200-epoch protocol"
 
 model:
   type: "original_puad"
@@ -18,6 +16,18 @@ model:
   padding: false
   out_channels: 384
   dropout_p: 0.2
+
+training:
+  batch_size: 8
+  epochs: 200
+  optimizer: "adamw"
+  scheduler: "cosine"
+  lr: 3.0e-4
+  lr_after_decay: 1.0e-5
+  weight_decay: 1.0e-4
+  early_stopping:
+    patience: 20
+    min_delta: 0.0
 
 puad:
   pooling: "global_average"
