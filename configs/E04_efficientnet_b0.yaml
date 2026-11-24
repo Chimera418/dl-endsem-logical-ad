@@ -19,5 +19,5 @@ training:
   lr_after_decay: 1.0e-5
   weight_decay: 1.0e-4
   early_stopping:
-    patience: 20
+    patience: 10
     min_delta: 0.0
