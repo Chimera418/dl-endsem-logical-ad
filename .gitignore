@@ -1,0 +1,29 @@
+# Python & IDE
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.vscode/
+.DS_Store
+
+# Large binaries, datasets, checkpoints, and raw logs (persisted on Google Drive)
+data/
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+*.tar
+*.tar.xz
+*.tar.gz
+*.zip
+*.7z
+
+# Keep lightweight JSON/CSV/MD results and reports tracked in git
+!results/**/*.json
+!results/**/*.csv
+!results/**/*.md
+!experiments/**/test_results.json
+!experiments/**/training_summary.json
+!experiments/**/loss_history.csv
+!experiments/**/config_used.yaml
+!reports/**

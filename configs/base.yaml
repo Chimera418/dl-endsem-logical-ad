@@ -1,0 +1,70 @@
+# Shared experimental protocol for Endsem Logical Anomaly Detection (Team 11)
+# All E01..E19 configs inherit from this file.
+
+seed: 42
+deterministic: true
+
+# Default local paths (automatically overridden by env vars ENDSEM_LOCO_ROOT,
+# ENDSEM_IMAGENET_ROOT, ENDSEM_TEACHER_PATH, or CLI flags on Colab Pro).
+paths:
+  dataset_root: "C:/Users/anees/Desktop/Sem 5/DL/Dataset/mvtec_loco_anomaly_detection"
+  imagenet_root: "C:/Users/anees/Desktop/Sem 5/DL/Dataset/ImageNet"
+  teacher_pdn_s: "C:/Users/anees/Desktop/Sem 5/DL/Assignment 2/experiments/_shared/teacher_pdn_s.pt"
+  a2_combined_puad_ckpt: "C:/Users/anees/Desktop/Sem 5/DL/Assignment 2/combined_experiment/puad/efficientad_backbone/best_checkpoint.pth"
+  output_root: "experiments"
+  checkpoint_root: "checkpoints"
+
+# Input & feature geometry
+img_size: 256
+out_channels: 384
+
+# MVTec LOCO AD categories (strictly logical anomaly evaluation)
+categories:
+  - breakfast_box
+  - juice_bottle
+  - pushpins
+  - screw_bag
+  - splicing_connectors
+
+# Verified Assignment 2 Combined PUAD Reference (ground truth from A2 test_results.json)
+reference_puad:
+  combined_mean_auroc: 0.8756068935170369
+  pooled_auroc: 0.8330403782066185
+  per_category_auroc:
+    breakfast_box: 0.9098747932908102
+    juice_bottle: 0.975801618219958
+    pushpins: 0.8672559324733237
+    screw_bag: 0.6787124566231901
+    splicing_connectors: 0.9463896669779024
+
+# Strict evaluation invariants
+evaluation:
+  primary_anomaly_type: logical_anomalies
+  exclude_structural: true
+  quantiles:
+    q_a: 0.9
+    q_b: 0.995
+  latency_warmup: 20
+  latency_runs: 100
+
+# Unified training defaults (used across E01_unified and E02..E19 for fair comparison)
+training:
+  batch_size: 8
+  epochs: 50
+  max_iterations: null          # null => full `epochs` passes over 1,778 pooled train images
+  lr: 1.0e-4
+  lr_after_decay: 1.0e-5
+  lr_decay_epoch: 45
+  weight_decay: 1.0e-5
+  hard_mining_quantile: 0.999
+  dropout_p: 0.2
+  augment_ae_only: true         # Appearance-only (brightness/contrast/saturation); ZERO spatial aug
+  use_penalty: true
+  penalty_workers: 2
+  mixed_precision: "bf16"       # "bf16" (preferred on A100/RTX4060), "fp16", or "fp32"
+  early_stopping:
+    patience: 10
+    min_delta: 0.0
+    monitor: val_loss
+    mode: min
+  save_resume_every_epoch: true

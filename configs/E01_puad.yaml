@@ -1,0 +1,26 @@
+# E01: Original PUAD Reference Architecture (Combined 5-Category Training)
+#
+# Modes supported:
+#   1. --mode verify_a2 : Evaluates the exact untouched Assignment 2 Combined PUAD
+#      checkpoint (batch_size=1, 70k iters, FP32) under the Endsem evaluation &
+#      profiling pipeline to verify exact 87.56% Mean / 83.30% Pooled parity AND
+#      measure missing metrics (params, GFLOPs, latency, peak VRAM).
+#   2. --mode train     : Trains Original PUAD from scratch under the unified Endsem
+#      protocol (batch_size=8, 50 epochs, BF16) to establish an apples-to-apples
+#      control for E02..E19 and quantify any batch-size / precision delta.
+
+exp_id: "E01_PUAD"
+description: "Original PUAD reference (frozen PDN-S teacher + PDN-S student + AutoEncoder + Ledoit-Wolf Mahalanobis)"
+
+model:
+  type: "original_puad"
+  pdn_size: "s"
+  padding: false
+  out_channels: 384
+  dropout_p: 0.2
+
+puad:
+  pooling: "global_average"
+  covariance: "ledoit_wolf"
+  inverse: "pinv"
+  combination: "sum_of_z_scores"
