@@ -1,0 +1,23 @@
+# E03: Phase B Backbone Investigation — DenseNet-121
+exp_id: "E03_DenseNet121"
+description: "PUAD with DenseNet-121 frozen ImageNet teacher + trainable DenseNet-121 student + AutoEncoder + Ledoit-Wolf Mahalanobis"
+
+model:
+  type: "backbone_puad"
+  backbone: "densenet121"
+  tap_strides: [8, 16, 32]
+  target_grid: 32
+  out_channels: 384
+  dropout_p: 0.2
+
+training:
+  batch_size: 8
+  epochs: 80
+  optimizer: "adamw"
+  scheduler: "cosine"
+  lr: 3.0e-4
+  lr_after_decay: 1.0e-5
+  weight_decay: 1.0e-4
+  early_stopping:
+    patience: 15
+    min_delta: 0.0

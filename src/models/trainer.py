@@ -19,7 +19,8 @@ from typing import Any, Dict, Optional, Tuple
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.optim import Adam
+from torch.optim import Adam, AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
 from torchvision.transforms import Normalize
 
@@ -172,6 +173,19 @@ def train_stage1_puad(
     resume_ckpt_path = ckpt_dir / "train_resume.pth"
     summary_path = out_dir / "training_summary.json"
 
+    # Pull prior checkpoints/summaries from Google Drive if resuming on a fresh Colab VM
+    if drive_sync_dir is not None and drive_sync_dir.is_dir() and not force:
+        for fname, dst in (
+            ("best_checkpoint.pth", best_ckpt_path),
+            ("train_resume.pth", resume_ckpt_path),
+            ("training_summary.json", summary_path),
+            ("loss_history.csv", out_dir / "loss_history.csv"),
+        ):
+            src = drive_sync_dir / fname
+            if src.exists() and not dst.exists():
+                shutil.copy2(src, dst)
+                print(f"  [drive-restore] Restored {fname} from {drive_sync_dir}", flush=True)
+
     if summary_path.exists() and best_ckpt_path.exists() and not force:
         import json
         print(f"[skip] Training already complete: {summary_path}")
@@ -241,7 +255,18 @@ def train_stage1_puad(
     mu, sigma = streaming_teacher_stats(plain_loader, system.teacher, device)
     normalize_teacher = Normalize(mu.tolist(), sigma.tolist())
 
-    optimizer = Adam(system.trainable_parameters(), lr=float(tr["lr"]), weight_decay=float(tr["weight_decay"]))
+    opt_name = str(tr.get("optimizer", "adam")).lower()
+    if opt_name == "adamw":
+        optimizer = AdamW(system.trainable_parameters(), lr=float(tr["lr"]), weight_decay=float(tr["weight_decay"]))
+    else:
+        optimizer = Adam(system.trainable_parameters(), lr=float(tr["lr"]), weight_decay=float(tr["weight_decay"]))
+
+    sched_name = str(tr.get("scheduler", "step")).lower()
+    scheduler = (
+        CosineAnnealingLR(optimizer, T_max=max(1, epochs), eta_min=float(tr["lr_after_decay"]))
+        if sched_name == "cosine"
+        else None
+    )
     stopper = EarlyStopping(patience=int(es_cfg["patience"]), min_delta=float(es_cfg["min_delta"]))
 
     start_epoch = 0
@@ -254,6 +279,8 @@ def train_stage1_puad(
         system.student.load_state_dict(st["student"])
         system.autoencoder.load_state_dict(st["autoencoder"])
         optimizer.load_state_dict(st["optimizer"])
+        if scheduler is not None and st.get("scheduler") is not None:
+            scheduler.load_state_dict(st["scheduler"])
         start_epoch = int(st["epoch"])
         iteration = int(st["iteration"])
         prior_wall = float(st.get("wall_clock_s", 0.0))
@@ -278,7 +305,7 @@ def train_stage1_puad(
     for epoch in range(start_epoch + 1, epochs + 1):
         last_epoch = epoch
         t_ep = time.time()
-        if epoch == lr_decay_epoch:
+        if scheduler is None and epoch == lr_decay_epoch:
             for g in optimizer.param_groups:
                 g["lr"] = float(tr["lr_after_decay"])
 
@@ -347,6 +374,8 @@ def train_stage1_puad(
 
         is_best = stopper.step(epoch, val_loss)
         lr_now = float(optimizer.param_groups[0]["lr"])
+        if scheduler is not None:
+            scheduler.step()
         ep_s = time.time() - t_ep
 
         log.log(
@@ -404,7 +433,8 @@ def train_stage1_puad(
                     "student": system.student.state_dict(),
                     "autoencoder": system.autoencoder.state_dict(),
                     "optimizer": optimizer.state_dict(),
-                    "learning_rate": lr_now,
+                    "scheduler": scheduler.state_dict() if scheduler is not None else None,
+                    "learning_rate": float(optimizer.param_groups[0]["lr"]),
                     "epoch": epoch,
                     "iteration": iteration,
                     "wall_clock_s": prior_wall + (time.time() - t_start),

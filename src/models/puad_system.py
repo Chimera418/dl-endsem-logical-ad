@@ -9,6 +9,7 @@ import torch
 import torch.nn as nn
 
 from src.backbones.pdn import build_pdn, load_pdn_teacher_state
+from src.backbones.timm_backbones import TimmStudentBackbone, TimmTeacherExtractor
 from src.models.autoencoder import AutoEncoder
 
 
@@ -86,7 +87,40 @@ def build_puad_system(cfg: Dict[str, Any], device: str = "cuda", load_teacher_we
             feature_grid_size=grid_size,
         ).to(device)
 
+    if mtype == "backbone_puad":
+        backbone_name = model_cfg["backbone"]
+        tap_strides = tuple(model_cfg.get("tap_strides", [8, 16, 32]))
+        target_grid = int(model_cfg.get("target_grid", 32))
+
+        teacher = TimmTeacherExtractor(
+            backbone_name=backbone_name,
+            out_channels=out_channels,
+            tap_strides=tap_strides,
+            target_grid=target_grid,
+            pretrained=load_teacher_weights,
+        )
+        student = TimmStudentBackbone(
+            backbone_name=backbone_name,
+            out_channels=out_channels,
+            tap_strides=tap_strides,
+            target_grid=target_grid,
+        )
+        autoencoder = AutoEncoder(
+            out_channels=out_channels,
+            img_size=img_size,
+            padding=False,
+            dropout_p=dropout_p,
+            target_size=target_grid,
+        )
+        return PUADSystem(
+            teacher=teacher,
+            student=student,
+            autoencoder=autoencoder,
+            out_channels=out_channels,
+            img_size=img_size,
+            feature_grid_size=target_grid,
+        ).to(device)
+
     raise NotImplementedError(
-        f"Model type {mtype!r} is not yet registered. "
-        "Phase B backbones will be added after E01 validation."
+        f"Model type {mtype!r} is not yet registered."
     )
