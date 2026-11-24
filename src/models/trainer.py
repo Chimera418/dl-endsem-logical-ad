@@ -10,6 +10,7 @@ Strict protocol guarantees:
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import os
 import shutil
 import time
@@ -52,6 +53,30 @@ LOG_FIELDS = [
 ]
 
 
+@contextmanager
+def preserve_bn_stats(module: torch.nn.Module):
+    """Prevent out-of-distribution ImageNet L_penalty / augmented passes from corrupting LOCO BatchNorm running stats."""
+    saved = []
+    for m in module.modules():
+        if isinstance(m, torch.nn.modules.batchnorm._BatchNorm) and m.track_running_stats:
+            saved.append((
+                m,
+                m.running_mean.clone() if m.running_mean is not None else None,
+                m.running_var.clone() if m.running_var is not None else None,
+                m.num_batches_tracked.clone() if m.num_batches_tracked is not None else None,
+            ))
+    try:
+        yield
+    finally:
+        for m, rm, rv, nbt in saved:
+            if rm is not None and m.running_mean is not None:
+                m.running_mean.copy_(rm)
+            if rv is not None and m.running_var is not None:
+                m.running_var.copy_(rv)
+            if nbt is not None and m.num_batches_tracked is not None:
+                m.num_batches_tracked.copy_(nbt)
+
+
 def hard_mining_loss(diff: torch.Tensor, quantile: float) -> torch.Tensor:
     """EfficientAD L_hard computed in FP32 for numerical stability with AMP."""
     diff_f32 = diff.float()
@@ -74,7 +99,9 @@ def streaming_teacher_stats(loader: DataLoader, teacher: torch.nn.Module, device
         total_sq = sq if total_sq is None else total_sq + sq
         n += out.shape[0] * out.shape[2] * out.shape[3]
     mean = (total / n).float()
-    std = (total_sq / n - (total / n) ** 2).clamp_min(1e-12).sqrt().float()
+    # Floor at 1e-2 to prevent near-dead ReLU channels in pretrained ResNet/DenseNet/EfficientNet
+    # from exploding standardized outliers under q=0.999 hard mining (no effect on PDN-S).
+    std = (total_sq / n - (total / n) ** 2).clamp_min(1e-4).sqrt().clamp_min(1e-2).float()
     return mean, std
 
 
@@ -337,12 +364,14 @@ def train_stage1_puad(
 
                 if penalty_stream is not None:
                     p_img = next(penalty_stream).to(device, non_blocking=True)
-                    loss_penalty = torch.mean(system.student(p_img)[:, :out_c].float() ** 2)
+                    with preserve_bn_stats(system.student):
+                        loss_penalty = torch.mean(system.student(p_img)[:, :out_c].float() ** 2)
                 else:
                     loss_penalty = torch.tensor(0.0, device=device)
 
                 ae_out = system.autoencoder(img_aug)
-                s_out_aug = system.student(img_aug)
+                with preserve_bn_stats(system.student):
+                    s_out_aug = system.student(img_aug)
                 loss_ae = torch.mean((t_out_aug - ae_out.float()) ** 2)
                 loss_stae = torch.mean((ae_out.float() - s_out_aug[:, out_c:].float()) ** 2)
 
