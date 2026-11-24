@@ -6,9 +6,9 @@ __pycache__/
 .vscode/
 .DS_Store
 
-# Large binaries, datasets, checkpoints, and raw logs (persisted on Google Drive)
-data/
-checkpoints/
+# Large binaries, root datasets, checkpoints, and raw logs (persisted on Google Drive)
+/data/
+/checkpoints/
 *.pth
 *.pt
 *.ckpt
