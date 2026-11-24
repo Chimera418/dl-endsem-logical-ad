@@ -12,12 +12,12 @@ model:
 
 training:
   batch_size: 8
-  epochs: 80
+  epochs: 200
   optimizer: "adamw"
   scheduler: "cosine"
   lr: 3.0e-4
   lr_after_decay: 1.0e-5
   weight_decay: 1.0e-4
   early_stopping:
-    patience: 15
+    patience: 20
     min_delta: 0.0
