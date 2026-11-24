@@ -108,15 +108,27 @@ def capture_environment(check_path: str = ".") -> Dict[str, Any]:
     }
 
 
+def has_native_bf16() -> bool:
+    """True only on Ampere+ GPUs (CC >= 8.0) with hardware BF16 Tensor Cores (not Turing CC 7.5 emulation)."""
+    if not torch.cuda.is_available():
+        return False
+    major, _ = torch.cuda.get_device_capability(0)
+    return major >= 8 and bool(torch.cuda.is_bf16_supported())
+
+
 def resolve_amp_dtype(requested: str, device: str) -> Optional[torch.dtype]:
-    """Select safe AMP dtype based on actual hardware capability (never silently fail)."""
+    """Select safe AMP dtype based on actual hardware capability (never emulate BF16 on Turing T4)."""
     req = (requested or "fp32").lower()
     if device != "cuda" or req == "fp32":
         return None
     if req == "bf16":
-        if torch.cuda.is_bf16_supported():
+        if has_native_bf16():
             return torch.bfloat16
-        print("[warn] BF16 requested but not supported on this GPU; falling back to FP16.")
+        props = torch.cuda.get_device_properties(0)
+        print(
+            f"[info] {props.name} (CC {props.major}.{props.minor}) lacks native BF16 Tensor Cores; "
+            "using FP16 with GradScaler instead."
+        )
         return torch.float16
     if req == "fp16":
         return torch.float16
