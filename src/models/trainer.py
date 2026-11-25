@@ -55,26 +55,21 @@ LOG_FIELDS = [
 
 @contextmanager
 def preserve_bn_stats(module: torch.nn.Module):
-    """Prevent out-of-distribution ImageNet L_penalty / augmented passes from corrupting LOCO BatchNorm running stats."""
-    saved = []
+    """Put BatchNorm layers in eval() during OOD ImageNet L_penalty / augmented passes.
+
+    Uses clean MVTec LOCO running stats without any in-place running_mean/running_var writes,
+    avoiding both OOD stat contamination and PyTorch autograd version-counter conflicts.
+    """
+    bns = []
     for m in module.modules():
-        if isinstance(m, torch.nn.modules.batchnorm._BatchNorm) and m.track_running_stats:
-            saved.append((
-                m,
-                m.running_mean.clone() if m.running_mean is not None else None,
-                m.running_var.clone() if m.running_var is not None else None,
-                m.num_batches_tracked.clone() if m.num_batches_tracked is not None else None,
-            ))
+        if isinstance(m, torch.nn.modules.batchnorm._BatchNorm):
+            bns.append((m, m.training))
+            m.eval()
     try:
         yield
     finally:
-        for m, rm, rv, nbt in saved:
-            if rm is not None and m.running_mean is not None:
-                m.running_mean.copy_(rm)
-            if rv is not None and m.running_var is not None:
-                m.running_var.copy_(rv)
-            if nbt is not None and m.num_batches_tracked is not None:
-                m.num_batches_tracked.copy_(nbt)
+        for m, was_training in bns:
+            m.train(was_training)
 
 
 def hard_mining_loss(diff: torch.Tensor, quantile: float) -> torch.Tensor:
