@@ -1,0 +1,24 @@
+# E17: Phase D Multi-Scale Fusion — Weighted Bi-Directional BiFPN (attention-free)
+exp_id: "E17_BiFPN"
+description: "Winning PDN-S PUAD + 4-level BN-free Weighted BiFPN fusion (P2..P5 -> 59x59) without attention"
+
+model:
+  type: "enhanced_puad"
+  pdn_size: "s"
+  padding: false
+  out_channels: 384
+  dropout_p: 0.2
+  fusion: "bifpn"
+  fpn_channels: 128
+
+training:
+  batch_size: 8
+  epochs: 200
+  optimizer: "adamw"
+  scheduler: "cosine"
+  lr: 3.0e-4
+  lr_after_decay: 1.0e-5
+  weight_decay: 1.0e-4
+  early_stopping:
+    patience: 10
+    min_delta: 0.0
