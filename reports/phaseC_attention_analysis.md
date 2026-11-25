@@ -12,28 +12,28 @@
 All 10 attention mechanisms were inserted at the **exact same location** inside `EnhancedPDN_S` (Student branch only; frozen `PDN-S` Teacher and `AutoEncoder` held strictly identical):
 - **Insertion point:** Directly after `conv3 + ReLU` on the `(B, 256, 59, 59)` spatial feature tensor before `conv4` (`(B, 768, 56, 56)`).
 - **Training protocol:** Identical across all 10 runs (`batch_size=8`, `epochs=200`, `AdamW`, `lr=3e-4 → 1e-5` cosine, `weight_decay=1e-4`, `patience=10`, appearance-only `RandomAugment` on AE input, `10,000`-image ImageNet penalty corpus, native `BF16`).
-- **Hardware:** `E06–E10` trained on Colab Pro **NVIDIA A100-SXM4-40GB**; `E11–E15` trained on Colab Pro **NVIDIA L4 (22.5 GB)** (`CC ≥ 8.0`, native `BF16`). *(Note: Latency/FPS for `E07`, `E09`, `E12`, `E13`, `E14` was measured while sharing the GPU with parallel runs; `E06`, `E10`, `E11`, `E15` evaluated solo.)*
+- **Hardware:** `E06–E10` trained on Colab Pro **NVIDIA A100-SXM4-40GB**; `E11–E15` trained on Colab Pro **NVIDIA L4 (22.5 GB)** (`CC ≥ 8.0`, native `BF16`). All 10 checkpoints (`E06–E15`) were subsequently re-evaluated solo on the **same NVIDIA L4** (`--mode eval`) for exact apples-to-apples inference latency, FPS, and peak VRAM.
 
 ---
 
 ## 2. Full Phase C Leaderboard (`E06–E15` vs. `E01_PUAD_200ep` & A2 PUAD)
 
-Ranked by **Primary Metric (Combined Mean AUROC)**:
+Ranked by **Primary Metric (Combined Mean AUROC)** (all solo inference benchmarks on **NVIDIA L4**):
 
-| Rank | Exp | Attention Family | Best Ep (`val_loss`) | BB | JB | PP | SB | SC | **Combined Mean** | **Pooled Raw** | Δ Mean vs E01_200 | Δ Mean vs A2 | Params | GFLOPs | Peak Infer VRAM | Decision |
-|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| **1** | **`E15_CrissCross`** | **Global Axial (`R=2`)** | **184 (`1.0087`)** | `91.41%` | `96.99%` | `97.71%` | `71.65%` | **`95.95%`** | **90.74%** | `85.33%` | **`+1.10 pp`** | **`+3.18 pp`** | `8.140M` (`+82k`) | `77.05G` | `167.0 MiB` | **RETAIN (WINNER)** |
-| **2** | **`E14_NonLocal`** | **Global Pairwise 2D** | 133 (`1.0904`) | **`92.30%`** | `96.24%` | `96.57%` | **`72.24%`** | `92.80%` | **90.03%** | **`86.11%`** | **`+0.39 pp`** | **`+2.47 pp`** | `8.189M` (`+131k`) | `76.82G` | `169.3 MiB` | Runner-Up |
-| **3** | **`E12_GCT`** | Gated Channel Norm | 161 (`1.0718`) | `91.08%` | `95.95%` | `98.45%` | `70.26%` | `94.14%` | **89.98%** | `84.04%` | **`+0.34 pp`** | **`+2.41 pp`** | `8.059M` (`+768`) | `75.91G` | `152.3 MiB` | Strong #3 |
-| *ref* | *`E01_PUAD_200ep`* | *Baseline (None)* | *183 (`1.0517`)* | *`90.53%`* | *`96.87%`* | *`98.02%`* | *`68.94%`* | *`93.85%`* | ***`89.64%`*** | *`84.07%`* | *—* | *`+2.08 pp`* | *`8.058M`* | *`75.91G`* | *`171.8 MiB`* | *Baseline* |
-| 4 | `E07_ECA` | Local 1D Channel | 184 (`1.1126`) | `89.31%` | `95.71%` | `98.92%` | `70.43%` | `93.79%` | `89.63%` | `85.58%` | `-0.01 pp` | `+2.07 pp` | `8.058M` (`+5`) | `75.91G` | `150.7 MiB` | Reject (tie) |
-| 5 | `E13_BAM` | Parallel Ch+Dilated Sp | 188 (`1.1268`) | `90.09%` | `96.52%` | `98.45%` | `68.06%` | `95.01%` | `89.63%` | `85.47%` | `-0.01 pp` | `+2.07 pp` | `8.075M` (`+17k`) | `75.97G` | `150.9 MiB` | Reject (tie) |
-| 6 | `E11_SimAM` | Param-Free 3D Energy | 198 (`1.0348`) | `90.26%` | `96.46%` | `97.78%` | `67.66%` | `94.90%` | `89.41%` | `84.63%` | `-0.23 pp` | `+1.85 pp` | `8.058M` (`+0`) | `75.91G` | `131.4 MiB` | Reject |
-| 7 | `E10_Triplet` | Cross-Dim Permute | 192 (`1.2352`) | `89.63%` | `96.82%` | `96.47%` | `68.74%` | `94.25%` | `89.18%` | `84.66%` | `-0.46 pp` | `+1.62 pp` | `8.058M` (`+294`) | `75.91G` | `153.7 MiB` | Reject |
-| 8 | `E08_CBAM` | Seq. Ch + 7×7 Spatial | 200 (`1.0576`) | `85.91%` | `98.20%` | **`99.10%`** | `63.35%` | `93.45%` | `88.00%` | `85.43%` | `-1.64 pp` | `+0.44 pp` | `8.066M` (`+8.3k`) | `75.91G` | `153.0 MiB` | Reject |
-| 9 | `E06_SE` | Global Channel MLP | 198 (`1.0705`) | `87.21%` | **`98.32%`** | `94.23%` | `65.47%` | `93.61%` | `87.77%` | `82.70%` | `-1.87 pp` | `+0.21 pp` | `8.066M` (`+8.5k`) | `75.91G` | `150.8 MiB` | Reject |
-| 10 | `E09_CoordAtt` | Axis Pool + BN | 22 (`2.9503`) | `90.30%` | `95.74%` | `79.83%` | `69.31%` | `85.07%` | `84.05%` | `81.08%` | `-5.59 pp` | `-3.51 pp` | `8.071M` (`+12.8k`) | `75.91G` | `150.7 MiB` | Reject (BN spike) |
-| *ref* | *A2 PUAD* | *Published Reference* | *70k iters* | *`90.99%`* | *`97.58%`* | *`86.73%`* | *`67.87%`* | *`94.64%`* | *`87.56%`* | *`83.30%`* | *`-2.08 pp`* | *`0.00 pp`* | *`8.058M`* | *`75.91G`* | *`171.8 MiB`* | *Published Ref* |
+| Rank | Exp | Attention Family | Best Ep (`val_loss`) | BB | JB | PP | SB | SC | **Combined Mean** | **Pooled Raw** | Δ Mean vs E01_200 | Δ Mean vs A2 | Params | GFLOPs | L4 Solo Latency (FPS) | Peak Infer VRAM | Decision |
+|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| **1** | **`E15_CrissCross`** | **Global Axial (`R=2`)** | **184 (`1.0087`)** | `91.41%` | `96.99%` | `97.71%` | `71.65%` | **`95.95%`** | **90.74%** | `85.33%` | **`+1.10 pp`** | **`+3.18 pp`** | `8.140M` (`+82k`) | `77.05G` | `11.09 ms` (`90.2`) | `140.2 MiB` | **RETAIN (WINNER)** |
+| **2** | **`E14_NonLocal`** | **Global Pairwise 2D** | 133 (`1.0904`) | **`92.30%`** | `96.24%` | `96.57%` | **`72.24%`** | `92.80%` | **90.03%** | **`86.11%`** | **`+0.39 pp`** | **`+2.47 pp`** | `8.189M` (`+131k`) | `76.82G` | `10.79 ms` (`92.7`) | `140.0 MiB` | Runner-Up |
+| **3** | **`E12_GCT`** | Gated Channel Norm | 161 (`1.0718`) | `91.08%` | `95.95%` | `98.45%` | `70.26%` | `94.14%` | **89.98%** | `84.04%` | **`+0.34 pp`** | **`+2.41 pp`** | `8.059M` (`+768`) | `75.91G` | `10.22 ms` (`97.8`) | `131.4 MiB` | Strong #3 |
+| *ref* | *`E01_PUAD_200ep`* | *Baseline (None)* | *183 (`1.0517`)* | *`90.53%`* | *`96.87%`* | *`98.02%`* | *`68.94%`* | *`93.85%`* | ***`89.64%`*** | *`84.07%`* | *—* | *`+2.08 pp`* | *`8.058M`* | *`75.91G`* | *`10.00 ms` (`100.0`)* | *`131.4 MiB`* | *Baseline* |
+| 4 | `E07_ECA` | Local 1D Channel | 184 (`1.1126`) | `89.31%` | `95.71%` | `98.92%` | `70.43%` | `93.79%` | `89.63%` | `85.58%` | `-0.01 pp` | `+2.07 pp` | `8.058M` (`+5`) | `75.91G` | `10.19 ms` (`98.2`) | `131.4 MiB` | Reject (tie) |
+| 5 | `E13_BAM` | Parallel Ch+Dilated Sp | 188 (`1.1268`) | `90.08%` | `96.52%` | `98.45%` | `68.06%` | `95.00%` | `89.62%` | `85.46%` | `-0.02 pp` | `+2.06 pp` | `8.075M` (`+17k`) | `75.97G` | `10.24 ms` (`97.7`) | `131.6 MiB` | Reject (tie) |
+| 6 | `E11_SimAM` | Param-Free 3D Energy | 198 (`1.0348`) | `90.26%` | `96.46%` | `97.78%` | `67.66%` | `94.90%` | `89.41%` | `84.63%` | `-0.23 pp` | `+1.85 pp` | `8.058M` (`+0`) | `75.91G` | `10.26 ms` (`97.4`) | `131.4 MiB` | Reject |
+| 7 | `E10_Triplet` | Cross-Dim Permute | 192 (`1.2352`) | `89.63%` | `96.82%` | `96.47%` | `68.74%` | `94.25%` | `89.18%` | `84.66%` | `-0.46 pp` | `+1.62 pp` | `8.058M` (`+294`) | `75.91G` | `10.38 ms` (`96.3`) | `131.4 MiB` | Reject |
+| 8 | `E08_CBAM` | Seq. Ch + 7×7 Spatial | 200 (`1.0576`) | `85.91%` | `98.20%` | **`99.10%`** | `63.35%` | `93.45%` | `88.00%` | `85.43%` | `-1.64 pp` | `+0.44 pp` | `8.066M` (`+8.3k`) | `75.91G` | `10.30 ms` (`97.1`) | `131.5 MiB` | Reject |
+| 9 | `E06_SE` | Global Channel MLP | 198 (`1.0705`) | `87.21%` | **`98.32%`** | `94.23%` | `65.47%` | `93.61%` | `87.77%` | `82.70%` | `-1.87 pp` | `+0.21 pp` | `8.066M` (`+8.5k`) | `75.91G` | `10.04 ms` (`99.6`) | `131.5 MiB` | Reject |
+| 10 | `E09_CoordAtt` | Axis Pool + BN | 22 (`2.9503`) | `90.30%` | `95.74%` | `79.83%` | `69.31%` | `85.07%` | `84.05%` | `81.08%` | `-5.59 pp` | `-3.51 pp` | `8.071M` (`+12.8k`) | `75.91G` | `10.34 ms` (`96.7`) | `131.5 MiB` | Reject (BN spike) |
+| *ref* | *A2 PUAD* | *Published Reference* | *70k iters* | *`90.99%`* | *`97.58%`* | *`86.73%`* | *`67.87%`* | *`94.64%`* | *`87.56%`* | *`83.30%`* | *`-2.08 pp`* | *`0.00 pp`* | *`8.058M`* | *`75.91G`* | *`20.48 ms` (4060)* | *`171.8 MiB`* | *Published Ref* |
 
 ---
 
