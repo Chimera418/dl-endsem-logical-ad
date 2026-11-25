@@ -1,0 +1,23 @@
+# E10: Phase C Attention Investigation — Triplet Attention
+exp_id: "E10_Triplet"
+description: "Winning PDN-S PUAD + Triplet Attention (3-branch cross-dimension Z-pool) after conv3 (256x59x59)"
+
+model:
+  type: "enhanced_puad"
+  pdn_size: "s"
+  padding: false
+  out_channels: 384
+  dropout_p: 0.2
+  attention: "triplet"
+
+training:
+  batch_size: 8
+  epochs: 200
+  optimizer: "adamw"
+  scheduler: "cosine"
+  lr: 3.0e-4
+  lr_after_decay: 1.0e-5
+  weight_decay: 1.0e-4
+  early_stopping:
+    patience: 10
+    min_delta: 0.0

@@ -8,7 +8,8 @@ from typing import Any, Dict, Tuple
 import torch
 import torch.nn as nn
 
-from src.backbones.pdn import build_pdn, load_pdn_teacher_state
+from src.attention.mechanisms import build_attention
+from src.backbones.pdn import EnhancedPDN_S, build_pdn, load_pdn_teacher_state
 from src.backbones.timm_backbones import TimmStudentBackbone, TimmTeacherExtractor
 from src.models.autoencoder import AutoEncoder
 
@@ -71,6 +72,44 @@ def build_puad_system(cfg: Dict[str, Any], device: str = "cuda", load_teacher_we
             teacher.load_state_dict(state, strict=True)
 
         student = build_pdn(pdn_size, out_channels * 2, padding=padding)
+        autoencoder = AutoEncoder(
+            out_channels=out_channels,
+            img_size=img_size,
+            padding=padding,
+            dropout_p=dropout_p,
+        )
+        grid_size = img_size // 4 if padding else img_size // 4 - 8
+        return PUADSystem(
+            teacher=teacher,
+            student=student,
+            autoencoder=autoencoder,
+            out_channels=out_channels,
+            img_size=img_size,
+            feature_grid_size=grid_size,
+        ).to(device)
+
+    if mtype == "enhanced_puad":
+        pdn_size = model_cfg.get("pdn_size", "s")
+        padding = bool(model_cfg.get("padding", False))
+        teacher = build_pdn(pdn_size, out_channels, padding=padding)
+        if load_teacher_weights:
+            teacher_path = cfg["paths"]["teacher_pdn_s"]
+            if not os.path.exists(teacher_path):
+                raise FileNotFoundError(
+                    f"Shared PDN-S teacher checkpoint not found: {teacher_path}. "
+                    "Set paths.teacher_pdn_s or ENDSEM_TEACHER_PATH."
+                )
+            state = load_pdn_teacher_state(teacher_path, pdn_size=pdn_size, out_channels=out_channels)
+            teacher.load_state_dict(state, strict=True)
+
+        attn_name = model_cfg.get("attention")
+        attn_mod = build_attention(attn_name, channels=256) if attn_name else None
+
+        student = EnhancedPDN_S(
+            out_channels=out_channels * 2,
+            padding=padding,
+            attention=attn_mod,
+        )
         autoencoder = AutoEncoder(
             out_channels=out_channels,
             img_size=img_size,

@@ -1,0 +1,23 @@
+# E13: Phase C Attention Investigation — Bottleneck Attention Module (BAM)
+exp_id: "E13_BAM"
+description: "Winning PDN-S PUAD + Bottleneck Attention Module (parallel channel + dilated spatial) after conv3 (256x59x59)"
+
+model:
+  type: "enhanced_puad"
+  pdn_size: "s"
+  padding: false
+  out_channels: 384
+  dropout_p: 0.2
+  attention: "bam"
+
+training:
+  batch_size: 8
+  epochs: 200
+  optimizer: "adamw"
+  scheduler: "cosine"
+  lr: 3.0e-4
+  lr_after_decay: 1.0e-5
+  weight_decay: 1.0e-4
+  early_stopping:
+    patience: 10
+    min_delta: 0.0

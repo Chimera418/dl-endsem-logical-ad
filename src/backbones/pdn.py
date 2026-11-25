@@ -28,6 +28,41 @@ class PDN_S(nn.Module):
         return self.conv4(x)
 
 
+class EnhancedPDN_S(PDN_S):
+    """Phase C-E modular extension of the winning PDN-S Student backbone.
+
+    Preserves the exact PDN-S conv1..conv4 architecture and adds optional plug-in hooks:
+      - `attention`: inserted after conv3+ReLU at (B, 256, 59, 59) -> (B, 256, 59, 59)
+      - `fusion`:    optional multi-scale FPN / BiFPN over {s1(126x126), s2(61x61), s3(59x59)}
+      - `context`:   optional global Transformer / Mamba block at (B, 256, 59, 59)
+    """
+
+    def __init__(
+        self,
+        out_channels: int,
+        padding: bool = False,
+        attention: nn.Module | None = None,
+        fusion: nn.Module | None = None,
+        context: nn.Module | None = None,
+    ) -> None:
+        super().__init__(out_channels=out_channels, padding=padding)
+        self.attention = attention
+        self.fusion = fusion
+        self.context = context
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        s1 = self.avgpool1(F.relu(self.conv1(x)))  # (B, 128, 126, 126)
+        s2 = self.avgpool2(F.relu(self.conv2(s1))) # (B, 256,  61,  61)
+        s3 = F.relu(self.conv3(s2))                # (B, 256,  59,  59)
+
+        h = self.fusion([s1, s2, s3]) if self.fusion is not None else s3
+        if self.attention is not None:
+            h = self.attention(h)
+        if self.context is not None:
+            h = self.context(h)
+        return self.conv4(h)
+
+
 class PDN_M(nn.Module):
     def __init__(self, out_channels: int, padding: bool = False) -> None:
         super().__init__()
