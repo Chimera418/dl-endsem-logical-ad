@@ -467,6 +467,7 @@ def train_stage1_puad(
                 resume_ckpt_path,
             )
             _sync_file(resume_ckpt_path, drive_sync_dir)
+            _sync_file(out_dir / "loss_history.csv", drive_sync_dir)
 
         if stopper.should_stop:
             stop_reason = "early_stopping"
