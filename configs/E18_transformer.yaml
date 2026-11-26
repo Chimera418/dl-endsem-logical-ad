@@ -1,0 +1,25 @@
+# E18: Phase E Global Context — Vision Transformer (2x Pre-LN MHSA, 16x16 tokens, O(N^2 D))
+exp_id: "E18_Transformer"
+description: "Winning PDN-S PUAD + 2-layer Pre-LN Vision Transformer global context on 16x16 spatial tokens"
+
+model:
+  type: "enhanced_puad"
+  pdn_size: "s"
+  padding: false
+  out_channels: 384
+  dropout_p: 0.2
+  context: "transformer"
+  context_grid_size: 16
+  context_depth: 2
+
+training:
+  batch_size: 8
+  epochs: 200
+  optimizer: "adamw"
+  scheduler: "cosine"
+  lr: 3.0e-4
+  lr_after_decay: 1.0e-5
+  weight_decay: 1.0e-4
+  early_stopping:
+    patience: 10
+    min_delta: 0.0

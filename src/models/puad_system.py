@@ -11,6 +11,7 @@ import torch.nn as nn
 from src.attention.mechanisms import build_attention
 from src.backbones.pdn import EnhancedPDN_S, build_pdn, load_pdn_teacher_state
 from src.backbones.timm_backbones import TimmStudentBackbone, TimmTeacherExtractor
+from src.context.global_context import build_context
 from src.fusion.fpn import build_fusion
 from src.models.autoencoder import AutoEncoder
 
@@ -111,12 +112,24 @@ def build_puad_system(cfg: Dict[str, Any], device: str = "cuda", load_teacher_we
             if fusion_name
             else None
         )
+        context_name = model_cfg.get("context")
+        context_mod = (
+            build_context(
+                context_name,
+                channels=256,
+                grid_size=int(model_cfg.get("context_grid_size", 16)),
+                depth=int(model_cfg.get("context_depth", 2)),
+            )
+            if context_name
+            else None
+        )
 
         student = EnhancedPDN_S(
             out_channels=out_channels * 2,
             padding=padding,
             attention=attn_mod,
             fusion=fusion_mod,
+            context=context_mod,
         )
         autoencoder = AutoEncoder(
             out_channels=out_channels,
