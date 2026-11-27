@@ -1,0 +1,25 @@
+# E20: Final Integration Stage 1 — PDN-S + Phase D Winner (E16_FPN) + Phase C Winner (E15_CrissCross)
+exp_id: "E20_FPN_CrissCross"
+description: "Progressive Integration: Winning PDN-S + BN-free 4-level FPN + Recurrent Criss-Cross Attention (R=2)"
+
+model:
+  type: "enhanced_puad"
+  pdn_size: "s"
+  padding: false
+  out_channels: 384
+  dropout_p: 0.2
+  fusion: "fpn"
+  fpn_channels: 128
+  attention: "crisscross"
+
+training:
+  batch_size: 8
+  epochs: 200
+  optimizer: "adamw"
+  scheduler: "cosine"
+  lr: 3.0e-4
+  lr_after_decay: 1.0e-5
+  weight_decay: 1.0e-4
+  early_stopping:
+    patience: 10
+    min_delta: 0.0

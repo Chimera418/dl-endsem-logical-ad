@@ -1,0 +1,28 @@
+# E21: Final Integration Stage 2 — PDN-S + E16_FPN + E15_CrissCross + Phase E Winner (E18_Transformer)
+exp_id: "E21_FPN_CrissCross_Transformer"
+description: "Full Progressive Integration: Winning PDN-S + 4-level FPN + Criss-Cross (R=2) + 2-layer Pre-LN Transformer"
+
+model:
+  type: "enhanced_puad"
+  pdn_size: "s"
+  padding: false
+  out_channels: 384
+  dropout_p: 0.2
+  fusion: "fpn"
+  fpn_channels: 128
+  attention: "crisscross"
+  context: "transformer"
+  context_grid_size: 16
+  context_depth: 2
+
+training:
+  batch_size: 8
+  epochs: 200
+  optimizer: "adamw"
+  scheduler: "cosine"
+  lr: 3.0e-4
+  lr_after_decay: 1.0e-5
+  weight_decay: 1.0e-4
+  early_stopping:
+    patience: 10
+    min_delta: 0.0

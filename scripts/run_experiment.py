@@ -40,6 +40,7 @@ def main() -> int:
     ap.add_argument("--smoke", action="store_true", help="Fast 2-epoch/30-iter smoke test for debugging")
     ap.add_argument("--force", action="store_true", help="Overwrite existing results/checkpoints")
     ap.add_argument("--seed", type=int, default=None, help="Override random seed")
+    ap.add_argument("--category", default=None, help="Optional single MVTec LOCO category for individual-category benchmark (zero pooling)")
     ap.add_argument("--batch-size", type=int, default=None, help="Override batch size")
     ap.add_argument("--epochs", type=int, default=None, help="Override epochs")
     ap.add_argument("--mixed-precision", choices=["bf16", "fp16", "fp32"], default=None)
@@ -52,6 +53,8 @@ def main() -> int:
     overrides = {}
     if args.seed is not None:
         overrides["seed"] = args.seed
+    if args.category is not None:
+        overrides["categories"] = [args.category]
     tr_ov = {}
     if args.batch_size is not None:
         tr_ov["batch_size"] = args.batch_size
@@ -74,6 +77,8 @@ def main() -> int:
     cfg = load_experiment_config(args.config, overrides=overrides)
     exp_id = cfg["exp_id"]
     run_tag = f"{exp_id}_verify_a2" if args.mode == "verify_a2" else (f"{exp_id}_smoke" if args.smoke else exp_id)
+    if args.category is not None:
+        run_tag = f"{run_tag}_ind_{args.category}"
     if args.seed is not None and args.seed != 42:
         run_tag = f"{run_tag}_seed{args.seed}"
 
