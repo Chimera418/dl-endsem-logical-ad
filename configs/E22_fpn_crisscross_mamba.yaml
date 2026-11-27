@@ -1,0 +1,28 @@
+# E22: Final Integration Stage 2b — PDN-S + E16_FPN + E15_CrissCross + E19_Mamba (2D Cross-Scan SSM)
+exp_id: "E22_FPN_CrissCross_Mamba"
+description: "Full Progressive Integration (Linear SSM): Winning PDN-S + 4-level FPN + Criss-Cross (R=2) + 2D Mamba"
+
+model:
+  type: "enhanced_puad"
+  pdn_size: "s"
+  padding: false
+  out_channels: 384
+  dropout_p: 0.2
+  fusion: "fpn"
+  fpn_channels: 128
+  attention: "crisscross"
+  context: "mamba"
+  context_grid_size: 16
+  context_depth: 2
+
+training:
+  batch_size: 8
+  epochs: 200
+  optimizer: "adamw"
+  scheduler: "cosine"
+  lr: 3.0e-4
+  lr_after_decay: 1.0e-5
+  weight_decay: 1.0e-4
+  early_stopping:
+    patience: 10
+    min_delta: 0.0
