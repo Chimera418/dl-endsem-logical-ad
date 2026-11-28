@@ -77,10 +77,13 @@ def main() -> int:
     cfg = load_experiment_config(args.config, overrides=overrides)
     exp_id = cfg["exp_id"]
     run_tag = f"{exp_id}_verify_a2" if args.mode == "verify_a2" else (f"{exp_id}_smoke" if args.smoke else exp_id)
-    if args.category is not None:
-        run_tag = f"{run_tag}_ind_{args.category}"
     if args.seed is not None and args.seed != 42:
         run_tag = f"{run_tag}_seed{args.seed}"
+    if args.category is not None:
+        rel_dir = Path(f"{run_tag}_individual") / args.category
+        run_tag = f"{run_tag}_ind_{args.category}"
+    else:
+        rel_dir = Path(run_tag)
 
     out_root = Path(cfg["paths"]["output_root"])
     if not out_root.is_absolute():
@@ -89,9 +92,9 @@ def main() -> int:
     if not ckpt_root.is_absolute():
         ckpt_root = ROOT / ckpt_root
 
-    out_dir = out_root / run_tag
-    ckpt_dir = ckpt_root / run_tag
-    drive_sync = Path(args.drive_sync_dir) / run_tag if args.drive_sync_dir else None
+    out_dir = out_root / rel_dir
+    ckpt_dir = ckpt_root / rel_dir
+    drive_sync = Path(args.drive_sync_dir) / rel_dir if args.drive_sync_dir else None
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     set_seed(int(cfg["seed"]), bool(cfg.get("deterministic", True)))
