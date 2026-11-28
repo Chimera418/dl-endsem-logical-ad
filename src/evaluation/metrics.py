@@ -43,8 +43,13 @@ def evaluate_logical_scores(
     """Compute full Section 10 evaluation report: per-category, Combined Mean, Pooled Raw, and deltas."""
     pooled_auroc = strict_logical_auroc(scores, labels, anomaly_types)
 
+    present_cats = set(categories)
+    eval_cats = [c for c in CATEGORIES if c in present_cats]
+    if not eval_cats:
+        raise ValueError("No valid MVTec LOCO categories found in evaluation inputs.")
+
     per_cat: Dict[str, float] = {}
-    for cat in CATEGORIES:
+    for cat in eval_cats:
         idx = [i for i, c in enumerate(categories) if c == cat]
         c_s = [scores[i] for i in idx]
         c_y = [labels[i] for i in idx]
@@ -83,7 +88,7 @@ def evaluate_logical_scores(
         for name, sub_s in sub_scores.items():
             sub_pooled = strict_logical_auroc(sub_s, labels, anomaly_types)
             sub_cats = {}
-            for cat in CATEGORIES:
+            for cat in eval_cats:
                 idx = [i for i, c in enumerate(categories) if c == cat]
                 sub_cats[cat] = strict_logical_auroc(
                     [sub_s[i] for i in idx],
@@ -109,7 +114,8 @@ def format_result_summary(exp_id: str, results: Dict[str, Any]) -> str:
         "Per-Category Logical I-AUROC:",
     ]
     for cat in CATEGORIES:
-        lines.append(f"  {CATEGORY_LABELS[cat]:<22}: {m['per_category_auroc'][cat]*100:6.2f}%")
+        if cat in m["per_category_auroc"]:
+            lines.append(f"  {CATEGORY_LABELS[cat]:<22}: {m['per_category_auroc'][cat]*100:6.2f}%")
     lines.append(f"  {'Combined Mean AUROC':<22}: {m['combined_mean_auroc']*100:6.2f}%  (Primary)")
     lines.append(f"  {'Pooled Raw AUROC':<22}: {m['pooled_auroc']*100:6.2f}%  (Secondary)")
     if "improvement_over_puad" in m:
